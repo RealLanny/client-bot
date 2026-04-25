@@ -1,5 +1,7 @@
-const { Client, GatewayIntentBits, PermissionsBitField } = require('discord.js');
+const { Client, GatewayIntentBits, PermissionsBitField, ChannelType } = require('discord.js');
 const express = require('express');
+
+console.log('STARTING BOT FILE...');
 
 const app = express();
 
@@ -9,9 +11,13 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Web server running on port ${PORT}`);
 });
+
+const token = process.env.TOKEN;
+
+console.log('TOKEN LOADED:', token ? 'YES' : 'NO');
 
 const client = new Client({
   intents: [
@@ -22,11 +28,12 @@ const client = new Client({
 });
 
 client.once('ready', () => {
-  console.log(`Logged in as ${client.user.tag}`);
+  console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
+  if (!message.guild) return;
   if (!message.content.startsWith('!channel')) return;
 
   if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
@@ -34,18 +41,15 @@ client.on('messageCreate', async (message) => {
   }
 
   const user = message.mentions.users.first();
-
-  if (!user) {
-    return message.reply('Use: `!channel @user`');
-  }
+  if (!user) return message.reply('Use: `!channel @user`');
 
   const random = Math.floor(1000 + Math.random() * 9000);
-  const name = `client-${random}`;
+  const channelName = `client-${random}`;
 
   try {
     const channel = await message.guild.channels.create({
-      name,
-      type: 0,
+      name: channelName,
+      type: ChannelType.GuildText,
       parent: '1497403261399859351',
       permissionOverwrites: [
         {
@@ -75,11 +79,13 @@ client.on('messageCreate', async (message) => {
       ]
     });
 
-    await message.reply(`✅ Created private channel ${channel} for ${user}`);
+    message.reply(`✅ Created private channel ${channel} for ${user}`);
   } catch (error) {
-    console.error(error);
-    await message.reply('❌ Error creating channel.');
+    console.error('CHANNEL ERROR:', error);
+    message.reply('❌ Error creating channel.');
   }
 });
 
-client.login(process.env.TOKEN);
+client.login(token).catch((error) => {
+  console.error('LOGIN ERROR:', error);
+});
